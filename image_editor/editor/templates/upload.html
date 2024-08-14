@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Image</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
+    <style>
+        .container {
+            margin-top: 30px;
+        }
+        #c {
+            border: 1px solid #000;
+            margin-top: 20px;
+        }
+        .image-preview {
+            max-width: 200px;
+            margin: 10px;
+            border: 1px solid #ddd;
+            padding: 5px;
+        }
+        
+    </style>
+</head>
+<body>
+    {% if messages %}
+    <div class="alert alert-info">
+        {% for message in messages %}
+            {{ message }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div class="container">
+        <h1 class="text-center">Image Editor App</h1>
+        <form method="post" enctype="multipart/form-data" class="mb-4">
+            {% csrf_token %}
+            <div class="form-group">
+                {{ form.as_p }}
+            </div>
+            <button type="submit" class="btn btn-primary">Upload</button>
+        </form>
+
+        <h2>Uploaded Images</h2>
+        <div class="d-flex flex-wrap">
+            {% for image in images %}
+                <div class="image-preview">
+                    <img src="{{ image.image.url }}" alt="Uploaded Image" class="img-fluid">
+                </div>
+            {% empty %}
+                <p>No images uploaded yet.</p>
+            {% endfor %}
+        </div>
+
+        <h2 class="mt-5">Edit Image</h2>
+        <div class="form-group">
+            <input type="file" id="upload" class="form-control-file mb-3" />
+            <button id="add-text" class="btn btn-secondary">Add Text</button>
+            <button id="crop" class="btn btn-secondary">Crop</button>
+            <button id="save" class="btn btn-success">Save Image</button>
+        </div>
+        <canvas id="c" width="800px" height="400px"></canvas>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var canvas = new fabric.Canvas('c');
+
+            document.getElementById('upload').addEventListener('change', function(event) {
+                var reader = new FileReader();
+                reader.onload = function(event) {
+                    fabric.Image.fromURL(event.target.result, function(img) {
+                        canvas.add(img);
+                        canvas.setActiveObject(img);
+                        canvas.renderAll();
+                    });
+                };
+                reader.readAsDataURL(event.target.files[0]);
+            });
+
+            document.getElementById('add-text').addEventListener('click', function() {
+                var text = new fabric.Text('Hello World!', { left: 100, top: 100 });
+                canvas.add(text);
+            });});
+
+            // Start cropping
+            document.getElementById('crop').addEventListener('click', function() {
+                if (!isCropping) {
+                    isCropping = true;
+                    canvas.isDrawingMode = false;
+                    cropSelection = new fabric.Rect({
+                        left: 50,
+                        top: 50,
+                        fill: 'transparent',
+                        stroke: '#00f',
+                        strokeWidth: 2,
+                        selectable: false,
+                        hasControls: false,
+                        hasBorders: false,
+                        originX: 'left',
+                        originY: 'top'
+                    });
+                    canvas.add(cropSelection);
+                    canvas.on('mouse:down', startCrop);
+                    canvas.on('mouse:move', updateCrop);
+                    canvas.on('mouse:up', endCrop);
+                } else {
+                    isCropping = false;
+                    canvas.off('mouse:down');
+                    canvas.off('mouse:move');
+                    canvas.off('mouse:up');
+                }
+            });
+
+            function startCrop(options) {
+                if (!isCropping) return;
+                var pointer = canvas.getPointer(options.e);
+                cropSelection.set({ left: pointer.x, top: pointer.y, width: 0, height: 0 });
+                canvas.renderAll();
+            }
+
+            function updateCrop(options) {
+                if (!isCropping) return;
+                var pointer = canvas.getPointer(options.e);
+                cropSelection.set({
+                    width: Math.abs(pointer.x - cropSelection.left),
+                    height: Math.abs(pointer.y - cropSelection.top)
+                });
+                canvas.renderAll();
+            }
+
+            function endCrop() {
+                if (!isCropping) return;
+                isCropping = false;
+                var activeObject = canvas.getActiveObject();
+                if (activeObject && cropSelection) {
+                    var cropped = new fabric.Image(activeObject.getElement(), {
+                        left: cropSelection.left,
+                        top: cropSelection.top,
+                        width: cropSelection.width,
+                        height: cropSelection.height,
+                        clipPath: cropSelection
+                    });
+                    canvas.clear();
+                    canvas.add(cropped);
+                    canvas.renderAll();
+                }
+                canvas.remove(cropSelection);
+            }
+
+            document.getElementById('save').addEventListener('click', function() {
+                var dataURL = canvas.toDataURL('image/png');
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/save_image/';
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'image';
+                input.value = dataURL;
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            });
+    </script>
+</body>
+</html>
+
+
