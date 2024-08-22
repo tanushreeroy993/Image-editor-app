@@ -124,8 +124,6 @@ function saveImage() {
 
     // Set the location href to the canvas data
     linkElement.setAttribute('href', canvasData);
-
     // Click on the link to start the download 
     linkElement.click();
 }
-

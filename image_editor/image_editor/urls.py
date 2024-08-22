@@ -23,10 +23,16 @@ from django.views.generic import TemplateView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', TemplateView.as_view(template_name='home.html'), name='home'),  # Root URL pattern
+    path('', TemplateView.as_view(template_name='home.html'), name='home'),
     path('upload/', views.upload_image, name='upload_image'),
     path('newupload/', views.newupload, name='newupload'),
-    path('save_image/', views.save_image, name='save_image'),  # Add this line
-    path('login/', views.user_login, name='login'),  # Add this line
-    path('logout/', views.user_logout, name='logout'),  # Add this line
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path('save_image/', views.save_image, name='save_image'),
+    path('login/', views.user_login, name='login'),
+    path('logout/', views.user_logout, name='logout'),
+]
+
+# Add static files serving for development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
+
